@@ -1,0 +1,9 @@
+{
+  "name": "wenyang3d",
+  "private": true,
+  "version": "1.0.0",
+  "description": "纹初迹现 · AI纹样创作与3D生成平台",
+  "dependencies": {
+    "@netlify/blobs": "^8.0.0"
+  }
+}

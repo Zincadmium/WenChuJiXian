@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>纹初迹现 · AI 纹样创作与 3D 生成平台</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f5efe6; color: #3d3a34; line-height: 1.6; }
+  header { background: linear-gradient(135deg, #2f2a24, #4a3f33); color: #f0e9dc; padding: 34px 20px; text-align: center; }
+  header h1 { font-size: 30px; letter-spacing: 4px; font-weight: 600; }
+  header p { color: #c9b98f; margin-top: 10px; font-size: 14px; }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 60px; }
+  .panel { background: #fffdf8; border: 1px solid #e4dbc9; border-radius: 14px; padding: 22px; margin: 20px 0; box-shadow: 0 4px 16px rgba(0,0,0,.04); }
+  .panel h2 { font-size: 17px; color: #6b5940; border-left: 4px solid #b98a3e; padding-left: 12px; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+  .badge { font-size: 11px; background: #efefef; color: #888; padding: 2px 8px; border-radius: 10px; font-weight: normal; }
+  .badge.on { background: #b98a3e; color: #fff; }
+  textarea, input[type=text] { width: 100%; padding: 12px; border: 1px solid #d8cdb8; border-radius: 10px; font-size: 14px; background: #fff; color: #3d3a34; resize: vertical; }
+  .row { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+  button { background: #b98a3e; color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 14px; cursor: pointer; transition: .2s; }
+  button:hover { background: #a3772f; }
+  button:disabled { background: #ccc; cursor: not-allowed; }
+  button.ghost { background: #efe7d8; color: #6b5940; }
+  button.ghost:hover { background: #e3d7bf; }
+  pre { background: #2f2a24; color: #e8e0cf; padding: 14px; border-radius: 10px; overflow: auto; font-size: 12px; margin-top: 12px; max-height: 240px; }
+  .box { background: #faf6ec; border: 1px dashed #cdbfa2; border-radius: 10px; padding: 14px; margin-top: 12px; font-size: 13px; white-space: pre-wrap; }
+  .imgwrap { margin-top: 12px; }
+  .imgwrap img { max-width: 100%; border-radius: 10px; border: 1px solid #e4dbc9; display:block; }
+  .status { color: #b98a3e; font-size: 13px; margin-top: 10px; min-height: 20px; }
+  .status .spin { display: inline-block; width: 13px; height: 13px; border: 2px solid #b98a3e; border-top-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  model-viewer { width: 100%; height: 460px; background: radial-gradient(#3a352c, #211e19); border-radius: 12px; margin-top: 12px; }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-top: 12px; }
+  .card { border: 1px solid #e4dbc9; border-radius: 12px; overflow: hidden; background: #fff; display: flex; flex-direction: column; cursor: pointer; }
+  .card .imgbox { height: 140px; background: #f0e9dc; overflow: hidden; }
+  .card .imgbox img { width: 100%; height: 100%; object-fit: cover; }
+  .card .cd { padding: 10px 12px; }
+  .card .cd h3 { font-size: 14px; color: #6b5940; margin-bottom: 2px; }
+  .card .cd p { font-size: 12px; color: #888; }
+  .qa-item { background: #faf6ec; border: 1px solid #e4dbc9; border-radius: 10px; padding: 14px; margin-top: 12px; font-size: 14px; }
+  .qa-item b { color: #6b5940; }
+  .model-list { margin-top: 8px; }
+  .model-list .mli { display: flex; align-items: center; gap: 12px; background: #faf6ec; border:1px solid #e4dbc9; border-radius: 10px; padding: 10px; margin-top: 8px; }
+  .mli img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; background:#eee; }
+  .mli .info { flex: 1; font-size: 13px; }
+  .mli .info small { display:block; color:#999; }
+  .foot { text-align: center; color: #a99c80; font-size: 12px; margin-top: 40px; padding: 20px; }
+  .modal-mask { position: fixed; inset:0; background: rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; z-index:99; }
+  .modal { background:#fffdf8; max-width: 720px; width: 92%; max-height: 86vh; overflow:auto; border-radius: 14px; padding: 22px; }
+  .modal h3 { color:#6b5940; margin-bottom:4px; }
+  .modal .meta { color:#999; font-size:13px; margin-bottom:12px; }
+  .modal .split { display:flex; gap:16px; flex-wrap:wrap; }
+  .modal .split .left { flex: 0 0 240px; }
+  .modal .split .left img { width:100%; border-radius:10px; border:1px solid #e4dbc9; }
+  .modal .split .right { flex:1; min-width: 240px; font-size:13.5px; }
+  .modal .split .right p { margin: 6px 0; }
+  .modal .close { float:right; cursor:pointer; color:#999; font-size:20px; }
+</style>
+<script type="module" src="libs/model-viewer.min.js"></script>
+</head>
+<body>
+<header>
+  <h1>纹初迹现</h1>
+  <p>AI 纹样创作与 3D 生成 · 可溯源 · 可复用</p>
+</header>
+<main>
+<!-- ① 输入文化需求 -->
+  <section class="panel" id="p1">
+    <h2>① 输入文化需求</h2>
+    <textarea id="req" rows="3" placeholder="例如：古人给小孩做一只老虎枕头，想要雄壮的猛虎纹样，配祥云吉庆…"></textarea>
+    <div class="row">
+      <span class="badge">示例：</span>
+      <button class="ghost" onclick="setReq('想要神秘的龙纹，配祥云')">龙</button>
+      <button class="ghost" onclick="setReq('想要祥瑞的凤鸟纹')">凤</button>
+      <button class="ghost" onclick="setReq('想要磅礴的山川云水纹')">山水</button>
+      <button class="ghost" onclick="setReq('青铜器上的饕餮纹')">饕餮</button>
+    </div>
+    <div class="row"><button onclick="step1()">生成配方</button></div>
+  </section>
+
+  <!-- ② 文化配方 -->
+  <section class="panel" id="p2" style="display:none">
+    <h2>② 文化配方 <span class="badge">校验通过</span></h2>
+    <pre id="recipeBox"></pre>
+    
+  </section>
+
+  <!-- ③ AI 提示词精化 -->
+  <section class="panel" id="p3" style="display:none">
+    <h2>③ AI 提示词精化 <span class="badge">通义千问</span></h2>
+    <div class="status" id="refineStatus"></div>
+    <div class="box" id="refinedBox" style="display:none"></div>
+    <div class="row" id="refineNext" style="display:none">
+      <button onclick="step3toCards()">生成溯源卡片</button>
+    </div>
+  </section>
+
+  <!-- ④ 溯源卡片（先于2D图生成） -->
+  <section class="panel" id="p4" style="display:none">
+    <h2>④ 元素溯源卡片 <span class="badge">先于图片</span></h2>
+    <div id="cardArea"></div>
+    <div class="row" id="cardNext" style="display:none">
+      <button onclick="step4toImg()">生成2D写实文物图</button>
+      <button class="ghost" onclick="skipImg2()">跳过2D，直接生成3D</button>
+    </div>
+  </section>
+
+  <!-- ⑤ 2D 写实文物图（可选） -->
+  <section class="panel" id="p5" style="display:none">
+    <h2>⑤ AI 写实文物图 <span class="badge">通义万相</span> <span class="badge on">可跳过</span></h2>
+    <div class="status" id="imgStatus"></div>
+    <div class="imgwrap" id="imgWrap" style="display:none"></div>
+    <div class="row" id="imgNext" style="display:none">
+      <button onclick="step5to3d()">生成3D写实模型</button>
+      <button class="ghost" onclick="skipImg2()">跳过3D，直接提问</button>
+    </div>
+  </section>
+
+  <!-- ⑥ 3D 写实模型（可选） -->
+  <section class="panel" id="p6" style="display:none">
+    <h2>⑥ AI 3D 写实模型 <span class="badge">Tripo·图转3D</span> <span class="badge on">可跳过</span></h2>
+    <div class="status" id="mStatus"></div>
+    <div class="box" id="mSrc" style="display:none"></div>
+    <div id="modelWrap" style="display:none"></div>
+    <div class="row" id="modelMore" style="display:none">
+      <button class="ghost" onclick="gen3d(true)">重新生成</button>
+      <button onclick="gotoQA()">智能问答</button>
+    </div>
+  </section>
+
+  <!-- ⑦ 智能问答（页面最末尾） -->
+  <section class="panel" id="p7" style="display:none">
+    <h2>⑦ 智能问答 <span class="badge">通义千问</span></h2>
+    <textarea id="qaInput" rows="2" placeholder="关于这次生成的纹样/文物/配方，有什么想问的？"></textarea>
+    <div class="row">
+      <button onclick="askQA()">提问</button>
+      <button class="ghost" onclick="qaClear()">清空</button>
+    </div>
+    <div id="qaArea"></div>
+  </section>
+
+  <!-- 模型库（自动复用） -->
+  <section class="panel" id="plib" style="display:none">
+    <h2>🧊 已生成 3D 模型库 <span class="badge">词条相同自动复用</span></h2>
+    <div class="model-list" id="modelList"></div>
+  </section>
+
+  <div class="foot">数据来源：Wényàng 中华传统纹样 · AI 生成 2D/3D 用于校赛演示</div>
+
+<section class="panel" id="pAI" style="display:block">
+<h2>AI 解析 <span class="badge">通义千问</span></h2>
+<div class="status" id="aiExplainStatus"></div>
+<div class="box" id="aiExplainBox" style="display:none"></div>
+</section>
+
+</main>
+
+<!-- 溯源详情弹窗：上侧名称简介，下侧左图右文 -->
+<div class="modal-mask" id="modalMask" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="close" onclick="closeModal()">×</div>
+    <h3 id="mTitle"></h3>
+    <div class="meta" id="mMeta"></div>
+    <div class="split">
+      <div class="left"><img id="mImg" alt="纹样"></div>
+      <div class="right" id="mBody"></div>
+    </div>
+  </div>
+</div>
+</main>
+
+<script src="config.js"></script>
+<script>
+
+
+/* ================= 全局状态 ================= */
+let PATTERNS = [];
+const S = { recipe:null, refined:"", imageUrl:"", storageKey:"" };
+const $ = (id)=>document.getElementById(id);
+
+fetch('data/patterns.json').then(r=>r.json()).then(j=>{
+  PATTERNS = j.patterns || [];
+}).catch(()=>{});
+
+function setReq(t){ $('req').value = t; }
+
+/* ================= ① -> ② 文化配方 ================= */
+function step1(){
+  const txt = $('req').value.trim();
+  if(!txt){ alert('请先输入文化需求'); return; }
+  flowStartTime = Date.now();
+  // ① 配方（本地即时）
+  S.recipe = buildRecipe(txt);
+  $('p2').style.display = 'block';
+  $('recipeBox').textContent = JSON.stringify(S.recipe, null, 2);
+  $('p2').scrollIntoView({behavior:'smooth'});
+  // ④ 元素溯源卡片：与②③同步自动生成（不再需要额外按钮）
+  $('p4').style.display = 'block';
+  renderCards();
+  // ②③：AI 精化 + 底部 AI 解析栏（并行）
+  step2();
+  step1AIExplain(txt);
+  showProgress('①配方已生成，②③④同步执行中…');
+}
+
+function buildRecipe(t){
+  const has = (arr)=>arr.some(w=>t.includes(w));
+  const tables = [
+    { cat:['动物瑞兽纹'], name:'龙纹',      kw:['龙','蛟','虬'],             meaning:'皇权/腾达', ele:['龙','祥云'], note:'强调龙为主体' },
+    { cat:['动物瑞兽纹'], name:'凤纹',      kw:['凤','凤凰','鸾'],           meaning:'祥和/重生', ele:['凤','牡丹'], note:'以凤鸟为主体' },
+    { cat:['动物瑞兽纹'], name:'麒麟纹',    kw:['麒麟'],                     meaning:'仁瑞',      ele:['麒麟','祥云'], note:'麒麟为主体' },
+    { cat:['动物瑞兽纹'], name:'鹤纹',      kw:['鹤','仙鹤'],                meaning:'长寿',      ele:['鹤','松'], note:'仙鹤为主体' },
+    { cat:['动物瑞兽纹'], name:'鹿纹',      kw:['鹿'],                       meaning:'禄',        ele:['鹿'], note:'鹿为主体' },
+    { cat:['动物瑞兽纹'], name:'虎纹',      kw:['虎','老虎','猛虎'],         meaning:'勇猛/守护', ele:['虎','山石'], note:'猛虎为主体，突出雄壮' },
+    { cat:['动物瑞兽纹'], name:'狮纹',      kw:['狮','狮子','狻猊'],         meaning:'威武',      ele:['狮','绣球'], note:'狮为主体' },
+    { cat:['动物瑞兽纹'], name:'鱼纹',      kw:['鱼','锦鲤','鲤鱼'],         meaning:'富余',      ele:['鱼','水波'], note:'鱼为主体' },
+    { cat:['动物瑞兽纹'], name:'饕餮纹',    kw:['饕餮'],                     meaning:'神秘威严',  ele:['饕餮','回纹'], note:'饕餮为主体' },
+    { cat:['植物花卉纹'], name:'缠枝莲纹',  kw:['莲','荷花','莲花'],         meaning:'清廉/圣洁', ele:['莲','茎蔓'], note:'莲花为主体' },
+    { cat:['植物花卉纹'], name:'牡丹纹',    kw:['牡丹'],                     meaning:'富贵',      ele:['牡丹'], note:'牡丹为主体' },
+    { cat:['植物花卉纹'], name:'卷草纹',    kw:['卷草','忍冬'],              meaning:'生机',      ele:['卷草'], note:'卷草为主体' },
+    { cat:['云水山石纹'], name:'云纹',      kw:['云','祥云'],                meaning:'吉庆/高升', ele:['云气'], note:'云为主体' },
+    { cat:['云水山石纹'], name:'山水纹',    kw:['山','川','水','山水','江'], meaning:'磅礴',      ele:['山','水','云'], note:'体现磅礴宏大的山水意境' },
+    { cat:['几何锦纹'],   name:'回纹',      kw:['回纹'],                     meaning:'连绵',      ele:['回形'], note:'回纹为地纹' },
+    { cat:['吉祥器物纹'], name:'如意纹',    kw:['如意'],                     meaning:'顺遂',      ele:['如意'], note:'如意为主体' },
+    { cat:['文字纹样'],   name:'寿字纹',    kw:['寿'],                       meaning:'长寿',      ele:['寿字'], note:'寿字为主体' },
+  ];
+  for(const tb of tables){
+    if(has(tb.kw)){
+      const pool = PATTERNS.filter(p=>tb.cat.includes(p.category) && /^w\d+$/.test(p.id));
+      if(pool.length){
+        const r = pool[Math.floor(Math.random()*pool.length)];
+        return { name:r.name, cat:tb.cat, elements:tb.ele, meaning:r.meaning||tb.meaning, carrier:pickCarrier(t), dynasty:pickDynasty(t), abstractNote:tb.note };
+      }
+      return { name:tb.name, cat:tb.cat, elements:tb.ele, meaning:tb.meaning, carrier:pickCarrier(t), dynasty:pickDynasty(t), abstractNote:tb.note };
+    }
+  }
+  const all = [
+    { cat:['动物瑞兽纹'], name:'瑞兽纹', ele:['瑞兽'], meaning:'祥瑞', note:'从动物瑞兽纹中联想具体瑞兽（龙/凤/麒麟/虎等）自然采用其一' },
+    { cat:['植物花卉纹'], name:'花卉纹', ele:['花卉'], meaning:'生机', note:'从植物花卉纹中联想具体花卉（莲/牡丹/梅等）' },
+    { cat:['云水山石纹'], name:'山水云纹', ele:['云','山','水'], meaning:'磅礴', note:'体现磅礴宏大的山水意境，作为画面重点' },
+  ];
+  const pick = all[Math.floor(Math.random()*all.length)];
+  const pool = PATTERNS.filter(p=>pick.cat.includes(p.category) && /^w\d+$/.test(p.id));
+  if(pool.length){
+    const r = pool[Math.floor(Math.random()*pool.length)];
+    return { name:r.name, cat:pick.cat, elements:pick.ele, meaning:r.meaning||pick.meaning, carrier:pickCarrier(t), dynasty:pickDynasty(t), abstractNote:pick.note };
+  }
+  return { name:pick.name, cat:pick.cat, elements:pick.ele, meaning:pick.meaning, carrier:pickCarrier(t), dynasty:pickDynasty(t), abstractNote:pick.note };
+}
+
+const CARRIERS = ['青铜器','瓷器','织锦','木雕','玉器','漆器','陶器','金银器'];
+const DYNASTIES = ['商周','春秋战国','汉代','魏晋','隋唐','宋','元','明清'];
+function pickCarrier(t){ const m = CARRIERS.find(c=>t.includes(c)); return m||CARRIERS[Math.floor(Math.random()*CARRIERS.length)]; }
+function pickDynasty(t){ const d = DYNASTIES.find(x=>t.includes(x)); return d||DYNASTIES[Math.floor(Math.random()*DYNASTIES.length)]; }
+
+/* ========== ③ AI 提示词精化 ========== */
+async function step2(){
+  $('p3').style.display='block';
+  $('refineStatus').innerHTML='<span class="spin"></span> AI 正在精化提示词…';
+  $('p3').scrollIntoView({behavior:'smooth'});
+  const code=S.recipe, userReq=$('req').value.trim();
+  const sys='你是文物AI生成提示词专家。根据用户中文需求与配方写一段高质量中文文生图提示词（供2D与3D生成）。要求：突出载体器型材质、表面纹样名称及寓意、写实质感、均匀灯光、博物馆展品照片感、构图完整。具备抽象理解力：若需求宽泛（如"动物纹样""山水纹样"），从该类各种具体纹样（龙凤鹤鹿鱼、草木云山等）中联想并自然采用适当的一种或几种，不硬性平铺所有母题。只输出提示词本身。';
+  try{
+    const r=await fetch(CFG.qwen.proxy+'?kind=qwen&model='+CFG.qwen.model+'&payload='+encodeURIComponent(JSON.stringify([{role:'system',content:sys},{role:'user',content:'配方：'+JSON.stringify(code)+'\n用户需求：'+userReq}])));
+    const j=await r.json();
+    const content=(j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content)||(j.output&&j.output.text)||JSON.stringify(j);
+    S.refined=String(content).trim();
+    completeRefine();
+  }catch(e){ S.refined=buildFallbackPrompt(code); completeRefine(); }
+}
+function buildFallbackPrompt(code){ return '一件'+(code.dynasty||'')+(code.carrier||'')+'，器表装饰'+(code.name||'')+('，元素：'+(code.elements||[]).join('、'))+'，寓意'+(code.meaning||'')+'。写实文物摄影，均匀灯光，博物馆展品照片，无文字。'; }
+function completeRefine(){
+  $('refinedBox').style.display='block';
+  $('refinedBox').textContent='【AI 精化后的提示词】\n'+S.refined;
+  $('refineStatus').innerHTML='';
+  $('refineNext').style.display='flex';
+}
+
+/* ========== ④ 溯源卡片（图片生成前） ========== */
+function step3toCards(){ $('p4').style.display='block'; renderCards(); if(typeof refreshAIParse==='function'){refreshAIParse();}
+  $('p4').scrollIntoView({behavior:'smooth'}); }
+function matchById(id){ return PATTERNS.find(p=>p.id===id); }
+function shuffle(a){ const b=[...a]; for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];} return b; }
+function renderCards(){
+  const code=S.recipe, area=$('cardArea');
+  let pool=PATTERNS.filter(p=>{
+    if(!/^w\d+$/.test(p.id)) return false;
+    if(code.cat&&code.cat.length&&!code.cat.includes(p.category)) return false;
+    if(code.elements&&code.elements.length){
+      const els=String(p.elements||'').toLowerCase();
+      if(code.elements.some(e=>els.includes(String(e).toLowerCase()))) return true;
+    }
+    return true;
+  });
+  const picks=pool.length?shuffle(pool).slice(0,4):PATTERNS.filter(p=>/^w\d+$/.test(p.id)).slice(0,4);
+  area.innerHTML='<div class="card-grid">'+picks.map(p=>`<div class="card" onclick="openModal('${p.id}')"><div class="imgbox"><img src="images/patterns/${p.id}.jpg" loading="lazy" onerror="this.src='images/patterns/w001.jpg'"></div><div class="cd"><h3>${p.name}</h3><p>${p.category} · ${p.dynasty||''}</p></div></div>`).join('')+'</div>';
+  $('cardNext').style.display='flex';
+}
+function openModal(id){
+  const p=matchById(id); if(!p){alert('未找到该纹样');return;}
+  $('mTitle').textContent=p.name;
+  $('mMeta').textContent=`${p.category} · ${p.dynasty||''} · ${p.carrier||''} · 寓意:${p.meaning||''}`;
+  $('mImg').src='images/patterns/'+p.id+'.jpg';
+  $('mBody').innerHTML=`<p><b>文化故事：</b>${p.story||'—'}</p><p><b>元素：</b>${p.elements||'—'}</p><p><b>场合：</b>${p.occasion||'—'}</p><p><b>色彩/几何：</b>${p.color||''} ${p.geometry||''}</p><p><b>来源：</b><a href="${p.source_url||'#'}" target="_blank" style="color:#b98a3e">${p.source||''}</a>（${p.license||''}）</p>`;
+  $('modalMask').style.display='flex';
+}
+function closeModal(){ $('modalMask').style.display='none'; }
+
+/* ========== ⑤ 2D 写实文物图（可选） ========== */
+function step4toImg(){ $('p5').style.display='block'; gen2d(); $('p5').scrollIntoView({behavior:'smooth'}); }
+
+/* 问题三：第一步确认后与②③同步生成溯源卡片；④末尾按钮直接去2D */
+function step3toCardsThenImg(){
+  // 溯源卡片已于①确认时自动生成；此按钮直接进入2D生成
+  $('p4').style.display = 'block';
+  $('p4').scrollIntoView({behavior:'smooth'});
+  setTimeout(()=>{ step4toImg(); }, 300);
+}
+
+async function gen2d(){
+  $('imgStatus').innerHTML='<span class="spin"></span> 通义万相正在生成写实文物图…';
+  const prompt = S.refined || buildFallbackPrompt(S.recipe);
+  try{
+    const url = CFG.wanx.proxy + '?kind=wanx&prompt=' + encodeURIComponent(prompt) +
+      '&model=' + CFG.wanx.model + '&size=' + CFG.wanx.size;
+    const r = await fetch(url);
+    const j = await r.json();
+    if(j && j.url){
+      S.imageUrl = j.url;
+      $('imgWrap').style.display='block';
+      $('imgWrap').innerHTML = '<img src="'+j.url+'" alt="AI 写实文物图">';
+      $('imgStatus').innerHTML = '';
+      $('imgNext').style.display='flex';
+    } else if(j && j.pending){
+      $('imgStatus').innerHTML = '⏳ 仍在生成中（万相排队）… 请稍后再试一次';
+    } else {
+      $('imgStatus').innerHTML = '⚠️ 2D 生成失败：' + JSON.stringify(j || {}).slice(0,300);
+    }
+  }catch(e){
+    $('imgStatus').innerHTML = '⚠️ 2D 生成调用失败：' + e.message;
+  }
+}
+/* ========== ⑥ 3D 写实模型（图转3D + 模型库复用） ========== */
+function step5to3d(){ $('p6').style.display='block'; $('p6').scrollIntoView({behavior:'smooth'}); gen3dOnEntry(); }
+function skipImg2(){ $('p6').style.display='block'; $('p6').scrollIntoView({behavior:'smooth'}); if(!S.imageUrl){ $('mSrc').style.display='block'; $('mSrc').textContent='【提示】未生成2D图，将尝试文生3D（效果略逊图转3D）。'; } gen3dOnEntry(); }
+function gen3dOnEntry(){ if(S.imageUrl){ $('mSrc').style.display='block'; $('mSrc').textContent='【图转3D源图】正在使用第⑤步生成的2D图…'; } gen3d(false); }
+
+async function gen3d(force){
+  const key=(S.recipe&&S.recipe.stableKey) ? S.recipe.stableKey : ((S.recipe&&S.recipe.name)?makeKey(S.recipe.name):('m_'+Date.now()));
+  S.storageKey=key;
+  $('modelMore').style.display='none';
+  $('modelWrap').style.display='none';
+
+  // 1) 查模型库：词条相同直接复用（force=true 则强制重生成）
+  if(!force){
+    try{
+      const libRes=await fetch(modelStoreURL(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({op:'get',key})});
+      const lib=await libRes.json();
+      if(lib.found && lib.glbUrl){ S.modelSaved=true; $('mStatus').innerHTML='✅ 命中模型库，直接复用已有 3D 模型（词条：'+key+'）'; showModel(lib.glbUrl); after3d(); return; }
+    }catch(e){ /* 模型库不可用时继续生成 */ }
+  }
+
+  // 2) 未命中 → 提交 Tripo
+  $('mStatus').innerHTML='<span class="spin"></span> 正在提交 Tripo 生成（约1~3分钟）…';
+  try{
+    const sub=await fetch(CFG.tripo.submit,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      imageUrl:S.imageUrl||null,
+      prompt:S.refined||buildFallbackPrompt(S.recipe),
+      storageKey:key,
+      meta:{prompt:S.refined||'',code:S.recipe}
+    })});
+    const subj=await sub.json();
+    if(!subj.taskId){ $('mStatus').innerHTML='❌ 提交失败：'+JSON.stringify(subj).slice(0,200); return; }
+    await pollTripo(subj.taskId, key);
+  }catch(e){ $('mStatus').innerHTML='❌ 3D 提交失败：'+e.message; }
+}
+
+function modelStoreURL(){ return '/.netlify/functions/modelStore'; }
+
+async function pollTripo(taskId, key){
+  let tried=0;
+  while(tried<120){
+    await new Promise(r=>setTimeout(r,5000)); tried++;
+    const ck=await fetch(CFG.tripo.check,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({taskId,storageKey:key,meta:{prompt:S.refined||'',code:S.recipe}})});
+    const j=await ck.json();
+    $('mStatus').innerHTML='<span class="spin"></span> 3D 生成中…（'+(tried*5)+'秒）状态：'+j.status;
+    if(j.status==='SUCCEEDED'){ S.modelSaved=j.saved; $('mStatus').innerHTML='✅ 3D 生成成功'+(j.saved?'（已存入模型库）':'')+'！'; showModel(j.glbUrl); after3d(); return; }
+    if(j.status==='FAILED'){ $('mStatus').innerHTML='❌ 3D 生成失败：'+JSON.stringify(j).slice(0,200); return; }
+  }
+  $('mStatus').innerHTML='⏱ 超时（请重试）';
+}
+function showModel(glb){ $('modelWrap').style.display='block'; $('modelWrap').innerHTML='<model-viewer src="'+glb+'" camera-controls auto-rotate shadow-intensity="1" exposure="1.1" alt="3D模型"></model-viewer>'; }
+function after3d(){ $('modelMore').style.display='flex'; loadModelList(); }
+function makeKey(name){ return 'w_'+String(name).trim().replace(/\s+/g,'_'); }
+
+async function loadModelList(){
+  const plib=$('plib');
+  try{
+    const r=await fetch(modelStoreURL(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({op:'list'})});
+    const j=await r.json();
+    const items=j.items||[];
+    plib.style.display='block';
+    if(!items.length){ $('modelList').innerHTML='<div style="color:#999">模型库为空（生成3D后自动入库并复用）</div>'; return; }
+    $('modelList').innerHTML='<div class="model-list">'+items.map(it=>'<div class="mli"><img src="'+(it.preview||'')+'" onerror="this.style.background=\'#ddd\'"><div class="info"><b>'+it.key+'</b>'+(it.prompt?'<br>'+String(it.prompt).slice(0,40):'')+'<small>'+(it.createdAt||'')+'</small></div></div>').join('')+'</div>';
+  }catch(e){ plib.style.display='none'; }
+}
+
+/* ========== ⑦ 智能问答（页面最末尾） ========== */
+function gotoQA(){ $('p7').style.display='block'; loadModelList(); $('p7').scrollIntoView({behavior:'smooth'}); }
+async function askQA(){
+  const q=$('qaInput').value.trim(); if(!q){alert('请输入问题');return;}
+  const sys='你是纹样文物AI讲解员。根据本次生成的配方、纹样溯源信息和最终成品（2D/3D），回答用户问题，结合文化背景给出专业又易懂的反馈。';
+  const ctx='配方：'+JSON.stringify(S.recipe||{})+' 精化提示词：'+(S.refined||'')+(S.imageUrl?'\n已生成2D写实文物图。':'')+(S.modelSaved?'\n已生成3D写实模型并存入库。':'');
+  const box=document.createElement('div'); box.className='qa-item'; box.innerHTML='<b>Q：</b>'+(q).replace(/</g,'&lt;')+'<br><i>（思考中…）</i>'; $('qaArea').appendChild(box);
+  try{
+    const r=await fetch(CFG.qwen.proxy+'?kind=qwen&model='+CFG.qwen.model+'&payload='+encodeURIComponent(JSON.stringify([{role:'system',content:sys},{role:'user',content:ctx+'\n问题：'+q}])));
+    const j=await r.json();
+    const a=(j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content)||(j.output&&j.output.text)||JSON.stringify(j);
+    box.innerHTML='<b>Q：</b>'+(q).replace(/</g,'&lt;')+'<br><b>A：</b>'+String(a).replace(/\n/g,'<br>');
+  }catch(e){ box.innerHTML='<b>Q：</b>'+(q).replace(/</g,'&lt;')+'<br><b>A：</b>（未配置AI Key，无法回答）'+e.message; }
+}
+function qaClear(){ $('qaArea').innerHTML=''; }
+
+/* ========== 初始化 ========== */
+
+function hashKey(s){
+  // 简单稳定的字符串哈希（同一字符串永远同值）
+  let h=0; const str=String(s||'');
+  for(let i=0;i<str.length;i++){ h=((h<<5)-h+str.charCodeAt(i))|0; }
+  return 'k_'+(h>>>0).toString(16);
+}
+
+
+/* ========== AI 解析栏（页面最底部，与②③并行） ========== */
+let flowStartTime = 0;
+function showProgress(msg){ /* 轻提示，可留空 */ console.log(msg); }
+async function step1AIExplain(txt){
+  const box = $('aiExplainBox');
+  try{
+    $('aiExplainStatus').innerHTML = '<span class="spin"></span> AI 正在解析你的需求…';
+    const code = S.recipe || {};
+    const sys = '你是文物AI生成提示词专家，负责把用户需求精化为高质量文生图提示词（供2D与3D生成）。规则：\n' +
+    '1) 必须从500条真实中国纹样库中选取具体纹样来用（配方已给出类别与元素，库中真实纹样名如：缠枝莲纹、龙纹、凤纹、卷草纹、回纹、祥云纹、狮子纹、鹤纹、鹿纹、蝠纹、饕餮纹、牡丹纹、宝相花等），并在提示词中点名纹样名称；\n' +
+    '2) 具备抽象理解力：若需求宽泛（动物纹样/山水纹样/花卉纹样），从对应类别的各种具体纹样中联想并自然采用适当的一种或几种为主纹，不要生硬平铺所有母题；\n' +
+    '3) 详细描述：载体器型与材质（青铜/瓷器/织锦/木雕/玉器/漆器）、纹样在器物上的位置（腹部/口沿/肩部/开光）、主纹与地纹层次、线条风格、构图方式；\n' +
+    '4) 文本质感：写实质感、均匀灯光、博物馆展品摄影、微距细节、无文字无水印；\n' +
+    '5) 若库中有对应纹样，提示词末尾注明「参考文物纹样：<纹样名>」\n' +
+    '只输出提示词本身，不要解释、不要前缀、不要引号。';
+    const payload = [{role:'system',content:sys},{role:'user',content:'用户需求：'+txt+'\n配方：'+JSON.stringify(code)+'\n精化提示词：'+(S.refined||'（生成中…）')}];
+    const r = await fetch(CFG.qwen.proxy + '?kind=qwen&model=' + CFG.qwen.model + '&payload=' + encodeURIComponent(JSON.stringify(payload)));
+    const j = await r.json();
+    const a = (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || (j.output && j.output.text) || ('已生成配方：' + JSON.stringify(code));
+    box.style.display = 'block';
+    box.textContent = '🧭 ' + String(a).trim();
+    $('aiExplainStatus').innerHTML = '';
+  }catch(e){
+    box.style.display = 'block';
+    box.textContent = '🧭 （AI解析暂不可用，可先看配方）' + e.message;
+    $('aiExplainStatus').innerHTML = '';
+  }
+  const pAI = $('pAI'); if(pAI) pAI.scrollIntoView({behavior:'smooth'});
+}
+
+/* ========== ⑥ 3D（可选）：图转3D + 模型库复用 ========== */
+async function gen3d(force){
+  const mStatus = $('mStatus');
+  mStatus.innerHTML = '<span class="spin"></span> 正在检查模型库…';
+  const prompt = S.refined || buildFallbackPrompt(S.recipe || {});
+  const key = (S.recipe && S.recipe.stableKey) || makeKey(String(prompt));
+  S.storageKey = key;
+  try{
+    // 1) 先查模型库（词条相同直接复用）
+    const libRes = await fetch('/.netlify/functions/modelStore', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ op:'get', key })
+    }).then(r=>r.json());
+    if(libRes && libRes.found && !force){
+      showModel3d(libRes.modelUrl, libRes.meta);
+      mStatus.innerHTML = '♻️ 词条相同，已直接复用已有模型（未重新生成）';
+      S.modelSaved = true;
+      return;
+    }
+    // 2) 提交 Tripo 图转3D
+    mStatus.innerHTML = '<span class="spin"></span> 提交 Tripo 3D 生成…';
+    const sub = await fetch(CFG.tripo.submit, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        prompt,
+        imageUrl: S.imageUrl || '',       // 用第⑤步 2D 图（有则图转3D，无则文生3D）
+        storageKey: key
+      })
+    }).then(r=>r.json());
+    if(!sub.taskId){
+      mStatus.innerHTML = '❌ 3D 提交失败：' + JSON.stringify(sub).slice(0,300);
+      return;
+    }
+    // 3) 轮询
+    mStatus.innerHTML = '<span class="spin"></span> Tripo 正在生成3D模型（约1~3分钟）…';
+    for(let i=0;i<40;i++){
+      await new Promise(r=>setTimeout(r,5000));
+      const ck = await fetch(CFG.tripo.check, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ taskId: sub.taskId, storageKey: key, meta:{ name:S.recipe&&S.recipe.name, prompt } })
+      }).then(r=>r.json().catch(()=>({status:'FETCH_ERR'})));
+      if(ck.status === 'SUCCEEDED'){
+        showModel3d(ck.modelUrl, ck.meta);
+        mStatus.innerHTML = '✅ 3D 模型生成成功并已存入模型库';
+        S.modelSaved = true;
+        $('modelMore').style.display='flex';
+        loadModelList();
+        return;
+      }
+      if(ck.status === 'FAILED'){
+        mStatus.innerHTML = '❌ 3D 生成失败：' + JSON.stringify(ck).slice(0,300);
+        return;
+      }
+      mStatus.innerHTML = '<span class="spin"></span> 生成中…（' + (i+1) + '/40）';
+    }
+    mStatus.innerHTML = '⏳ 超时，请稍后到「模型库」查看或点击重新生成';
+  }catch(e){
+    mStatus.innerHTML = '❌ 3D 提交失败：' + e.message;
+  }
+}
+
+function showModel3d(modelUrl, meta){
+  const wrap = $('modelWrap');
+  wrap.style.display = 'block';
+  const name = (meta && meta.name) || '3D 模型';
+  wrap.innerHTML = '<model-viewer src="'+modelUrl+'" camera-controls auto-rotate ar alt="'+name+'"></model-viewer>';
+  $('modelMore').style.display='flex';
+}
+
+/* ========== 底部 AI 解析栏数据刷新（精化完成后更新解析内容） ========== */
+function refreshAIParse(){
+  const box = $('aiExplainBox');
+  if(box && S.refined && box.textContent.indexOf(S.refined) < 0){
+    // 精化完成后自动把最终提示词补进解析栏
+  }
+}
+
+/* ========== 初始化 ========== */
+document.addEventListener('DOMContentLoaded',()=>{ loadModelList(); });
+
+</script>
+</body>
+</html>

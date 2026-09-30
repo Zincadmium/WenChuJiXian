@@ -1,0 +1,12 @@
+# ============================================================
+#  纹初迹现 · Netlify 配置
+#  无需构建（纯静态+函数），publish 目录就是项目根目录
+# ============================================================
+
+[build]
+  command = "echo 'static site - nothing to build'"
+  publish = "."
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
