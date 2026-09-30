@@ -1,38 +1,24 @@
 // ============================================================
-//  submit3d.mjs —— Tripo 图转3D 提交（最简 body，已验证可用）
-//  POST /.netlify/functions/submit3d
-//  body: { prompt, imageUrl?, storageKey? }
+//  submit3d.mjs —— Tripo 图转3D 提交（返回 Response）
+//  POST /.netlify/functions/submit3d   body: { prompt, imageUrl?, storageKey? }
 //  返回: { taskId, storageKey }
 // ============================================================
-
 const TRIPO_URL =
   "https://maas.qianwenaiapi.com/api/v1/services/aigc/video-generation/3d-generation";
 
 export default async function handler(event) {
-  if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 200, headers: cors(), body: "ok" };
-  }
+  if (event.httpMethod === "OPTIONS") return new Response("ok", { status: 200, headers: cors() });
   const key = process.env.DASHSCOPE_API_KEY;
-  if (!key) {
-    return { statusCode: 500, headers: cors(), body: JSON.stringify({ error: "缺少 DASHSCOPE_API_KEY" }) };
-  }
-  let input;
-  try { input = JSON.parse(event.body || "{}"); } catch (e) { input = {}; }
-
-  // 最简 body（不带 parameters —— 之前测试证实带 texture_quality 会报 InvalidParameter）
-  const body = {
-    model: "Tripo/Tripo-H3.1",
-    input: {},
-  };
-
-  // 图转3D：优先 prompt + 参考图；无图则纯文生3D
-  if (input.imageUrl) {
-    body.input = { prompt: input.prompt || "文物写实3D模型", image_url: input.imageUrl };
-  } else {
-    body.input = { prompt: input.prompt || "文物写实3D模型" };
-  }
-
+  if (!key) return json(500, { error: "缺少 DASHSCOPE_API_KEY" });
   try {
+    const input = event.body ? JSON.parse(event.body) : {};
+    const prompt = input.prompt || "文生3D文物纹样";
+    const storageKey = input.storageKey || ("m_" + Date.now().toString(16));
+    const imageUrl = input.imageUrl || null;
+    // Tripo 最简 body：带图转3D用 image_url，纯文生用 prompt
+    const body = { model: "Tripo/Tripo-H3.1", input: {} };
+    if (imageUrl) { body.input.image_url = imageUrl; body.input.prompt = prompt; }
+    else { body.input.prompt = prompt; }
     const resp = await fetch(TRIPO_URL, {
       method: "POST",
       headers: {
@@ -43,19 +29,12 @@ export default async function handler(event) {
       body: JSON.stringify(body),
     });
     const text = await resp.text();
-    let data;
-    try { data = JSON.parse(text); } catch (e) { data = { raw: text }; }
-    const taskId = data.output && data.output.task_id;
-    if (!taskId) {
-      return { statusCode: (data.code ? 400 : resp.status), headers: cors(), body: JSON.stringify({ error: "Tripo 提交失败", detail: data }) };
-    }
-    return {
-      statusCode: 200,
-      headers: { ...cors(), "Content-Type": "application/json; charset=utf-8" },
-      body: JSON.stringify({ taskId, storageKey: input.storageKey || "", status: "PENDING" }),
-    };
+    let j; try { j = JSON.parse(text); } catch (e) { j = { raw: text }; }
+    const taskId = j.output && j.output.task_id;
+    if (!taskId) return json(400, { error: "Tripo 提交失败", detail: j });
+    return json(200, { taskId, storageKey });
   } catch (e) {
-    return { statusCode: 500, headers: cors(), body: JSON.stringify({ error: String(e) }) };
+    return json(500, { error: String(e) });
   }
 }
 
@@ -65,4 +44,7 @@ function cors() {
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   };
+}
+function json(code, obj) {
+  return new Response(JSON.stringify(obj), { status: code, headers: { ...cors(), "Content-Type": "application/json; charset=utf-8" } });
 }
