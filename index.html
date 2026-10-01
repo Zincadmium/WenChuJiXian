@@ -261,7 +261,8 @@ async function step2(){
   const code=S.recipe, userReq=$('req').value.trim();
   const sys='你是文物AI生成提示词专家。根据用户中文需求与配方写一段高质量中文文生图提示词（供2D与3D生成）。要求：突出载体器型材质、表面纹样名称及寓意、写实质感、均匀灯光、博物馆展品照片感、构图完整。具备抽象理解力：若需求宽泛（如"动物纹样""山水纹样"），从该类各种具体纹样（龙凤鹤鹿鱼、草木云山等）中联想并自然采用适当的一种或几种，不硬性平铺所有母题。只输出提示词本身。';
   try{
-    const r=await fetch(CFG.qwen.proxy+'?kind=qwen&model='+CFG.qwen.model+'&payload='+encodeURIComponent(JSON.stringify([{role:'system',content:sys},{role:'user',content:'配方：'+JSON.stringify(code)+'\n用户需求：'+userReq}])));
+    const body1=[{role:'system',content:sys},{role:'user',content:'配方：'+JSON.stringify(code)+'\n用户需求：'+userReq}];
+  const r=await fetch(CFG.qwen.proxy,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'qwen',model:CFG.qwen.model,payload:body1})});
     const j=await r.json();
     const content=(j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content)||(j.output&&j.output.text)||JSON.stringify(j);
     S.refined=String(content).trim();
@@ -321,9 +322,7 @@ async function gen2d(){
   $('imgStatus').innerHTML='<span class="spin"></span> 通义万相正在生成写实文物图…';
   const prompt = S.refined || buildFallbackPrompt(S.recipe);
   try{
-    const url = CFG.wanx.proxy + '?kind=wanx&prompt=' + encodeURIComponent(prompt) +
-      '&model=' + CFG.wanx.model + '&size=' + CFG.wanx.size;
-    const r = await fetch(url);
+    const r=await fetch(CFG.wanx.proxy,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'wanx',prompt:prompt,model:CFG.wanx.model,size:CFG.wanx.size})});
     const j = await r.json();
     if(j && j.url){
       S.imageUrl = j.url;
@@ -356,7 +355,7 @@ async function gen3d(force){
     try{
       const libRes=await fetch(modelStoreURL(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({op:'get',key})});
       const lib=await libRes.json();
-      if(lib.found && lib.glbUrl){ S.modelSaved=true; $('mStatus').innerHTML='✅ 命中模型库，直接复用已有 3D 模型（词条：'+key+'）'; showModel(lib.glbUrl); after3d(); return; }
+      if(lib.found && lib.modelUrl){ S.modelSaved=true; $('mStatus').innerHTML='✅ 命中模型库，直接复用已有 3D 模型（词条：'+key+'）'; showModel(lib.modelUrl); after3d(); return; }
     }catch(e){ /* 模型库不可用时继续生成 */ }
   }
 
@@ -384,7 +383,7 @@ async function pollTripo(taskId, key){
     const ck=await fetch(CFG.tripo.check,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({taskId,storageKey:key,meta:{prompt:S.refined||'',code:S.recipe}})});
     const j=await ck.json();
     $('mStatus').innerHTML='<span class="spin"></span> 3D 生成中…（'+(tried*5)+'秒）状态：'+j.status;
-    if(j.status==='SUCCEEDED'){ S.modelSaved=j.saved; $('mStatus').innerHTML='✅ 3D 生成成功'+(j.saved?'（已存入模型库）':'')+'！'; showModel(j.glbUrl); after3d(); return; }
+    if(j.status==='SUCCEEDED'){ S.modelSaved=j.saved; $('mStatus').innerHTML='✅ 3D 生成成功'+(j.saved?'（已存入模型库）':'')+'！'; showModel(j.modelUrl||j.pbr||j.pbr_model_url); after3d(); return; }
     if(j.status==='FAILED'){ $('mStatus').innerHTML='❌ 3D 生成失败：'+JSON.stringify(j).slice(0,200); return; }
   }
   $('mStatus').innerHTML='⏱ 超时（请重试）';
@@ -413,7 +412,7 @@ async function askQA(){
   const ctx='配方：'+JSON.stringify(S.recipe||{})+' 精化提示词：'+(S.refined||'')+(S.imageUrl?'\n已生成2D写实文物图。':'')+(S.modelSaved?'\n已生成3D写实模型并存入库。':'');
   const box=document.createElement('div'); box.className='qa-item'; box.innerHTML='<b>Q：</b>'+(q).replace(/</g,'&lt;')+'<br><i>（思考中…）</i>'; $('qaArea').appendChild(box);
   try{
-    const r=await fetch(CFG.qwen.proxy+'?kind=qwen&model='+CFG.qwen.model+'&payload='+encodeURIComponent(JSON.stringify([{role:'system',content:sys},{role:'user',content:ctx+'\n问题：'+q}])));
+    const r=await fetch(CFG.qwen.proxy,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'qwen',model:CFG.qwen.model,payload:[{role:'system',content:sys},{role:'user',content:ctx+'\n问题：'+q}]})});
     const j=await r.json();
     const a=(j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content)||(j.output&&j.output.text)||JSON.stringify(j);
     box.innerHTML='<b>Q：</b>'+(q).replace(/</g,'&lt;')+'<br><b>A：</b>'+String(a).replace(/\n/g,'<br>');
@@ -447,7 +446,7 @@ async function step1AIExplain(txt){
     '5) 若库中有对应纹样，提示词末尾注明「参考文物纹样：<纹样名>」\n' +
     '只输出提示词本身，不要解释、不要前缀、不要引号。';
     const payload = [{role:'system',content:sys},{role:'user',content:'用户需求：'+txt+'\n配方：'+JSON.stringify(code)+'\n精化提示词：'+(S.refined||'（生成中…）')}];
-    const r = await fetch(CFG.qwen.proxy + '?kind=qwen&model=' + CFG.qwen.model + '&payload=' + encodeURIComponent(JSON.stringify(payload)));
+    const r = await fetch(CFG.qwen.proxy,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'qwen',model:CFG.qwen.model,payload:payload})});
     const j = await r.json();
     const a = (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || (j.output && j.output.text) || ('已生成配方：' + JSON.stringify(code));
     box.style.display = 'block';
