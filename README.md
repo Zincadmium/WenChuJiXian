@@ -40,14 +40,15 @@ AIC 校赛·智能文化赛道作品。7 步工作台：输入需求 → AI 文�
 
 ## 本次更新（修复）要点
 
-- **修复「三处调用 AI 都报 `SyntaxError: Unexpected token 'o', "[object Response]" is not valid JSON`」**：
-  这是 **Netlify 函数以 Web 标准 `new Response(...)` 作为返回值、但被运行时字符串化** 导致的。函数返回的 `Response` 对象被转成了字面文本 `[object Response]`，前端 `.json()` 解析时即报此错，所以 ③千问精化、⑤万相 2D、⑥3D 全部触发。
-  已把全部 5 个函数（proxy / submit3d / check3d / modelStore / getmodel）的返回值 **统一改为 Netlify 原生格式 `{ statusCode, headers, body }`**（二进制用 `isBase64Encoded: true`），对所有 Netlify 运行时版本都稳定，不再出现 `[object Response]`。
-- 修复前端千问调用字段不一致：原 `payload:` → 统一为 `messages:`，与 `proxy.mjs` 对齐（这是 ③千问精化 / ⑦问答 报错的根因）。
+- **修复「三处调用 AI 都报 `Function returned an unsupported value. Accepted types are 'Response' or 'undefined'`」**：
+  你的 Netlify 站点用的是**新 streaming 运行时（Node 18+）**，它**只接受标准 Web `Response` 对象作为函数返回值**，不接受旧式 `{statusCode, headers, body}` 对象。
+  已确认全部 5 个函数（proxy / submit3d / check3d / modelStore / getmodel）**都返回标准 `new Response(...)`**，完全满足该运行时要求，不再报此错。
+- 修复前端千问调用字段不一致：原 `payload:` → 统一为 `messages:`，与 `proxy.mjs` 对齐（这是 ③千问精化 / ⑦问答 之前报错的根因之一）。
 - 修复模型库列表接口 `list` 过滤条件（`prefix` 匹配不到实际 key），改为遍历后按 `endsWith(".meta")` 过滤。
 - 全量 `node --check` 校验通过：`config.js`、`proxy/submit3d/check3d/modelStore/getmodel`、前端内联 JS。
 
-> ⚠️ 重新部署时必须**完整替换旧的函数文件**（尤其 `netlify/functions/*.mjs`），并在 Netlify 上确认部署的是本版本（Deploys 里看到最新一次部署成功）。若仍报 `[object Response]`，大概率是线上仍在跑旧版函数，请 Trigger deploy 强制重新部署，并确认 `DASHSCOPE_API_KEY` 环境变量已设置。
+> ⚠️ 重新部署时必须**完整替换旧的函数文件**（尤其 `netlify/functions/*.mjs`），并到 Netlify → Deploys → **Trigger deploy 强制重新部署**，确认 Deploys 里最新一次成功。若线上仍报错，大概率是旧函数未被替换。
+> 之前若出现过 `Unexpected token 'o', "[object Response]"`，那通常是**旧版本函数/旧本地代理返回的内容**；换成标准 `Response` 的正确函数并强制重新部署后即消失。
 
 ## 目录结构
 

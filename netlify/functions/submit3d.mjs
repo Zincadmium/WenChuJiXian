@@ -7,7 +7,7 @@ const TRIPO_URL =
   "https://maas.qianwenaiapi.com/api/v1/services/aigc/video-generation/3d-generation";
 
 export default async function handler(event) {
-  if (event.httpMethod === "OPTIONS") return native(200, "ok", cors());
+  if (event.httpMethod === "OPTIONS") return new Response("ok", { status: 200, headers: cors() });
   const key = process.env.DASHSCOPE_API_KEY;
   if (!key) return json(500, { error: "缺少 DASHSCOPE_API_KEY" });
   try {
@@ -45,9 +45,6 @@ function cors() {
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   };
 }
-function native(code, body, headers) {
-  return { statusCode: code, headers, body: typeof body === "string" ? body : JSON.stringify(body) };
-}
 function json(code, obj) {
-  return native(code, obj, { ...cors(), "Content-Type": "application/json; charset=utf-8" });
+  return new Response(JSON.stringify(obj), { status: code, headers: { ...cors(), "Content-Type": "application/json; charset=utf-8" } });
 }

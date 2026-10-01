@@ -7,7 +7,7 @@
 import { getStore } from "@netlify/blobs";
 
 export default async function handler(event) {
-  if (event.httpMethod === "OPTIONS") return native(200, "ok", cors());
+  if (event.httpMethod === "OPTIONS") return new Response("ok", { status: 200, headers: cors() });
   try {
     const url = new URL(event.rawUrl || `https://x/${event.path}`);
     const key = url.searchParams.get("key") || "";
@@ -16,16 +16,14 @@ export default async function handler(event) {
     const blob = await store.get(`${key}.glb`).catch(() => null);
     if (!blob) return json(404, { error: "not found" });
     const buf = Buffer.from(await blob.arrayBuffer());
-    return {
-      statusCode: 200,
-      isBase64Encoded: true,
+    return new Response(new Uint8Array(buf), {
+      status: 200,
       headers: {
         "Content-Type": "model/gltf-binary",
         "Access-Control-Allow-Origin": "*",
         "Cache-Control": "public, max-age=86400",
       },
-      body: buf.toString("base64"),
-    };
+    });
   } catch (e) {
     return json(500, { error: String(e) });
   }
@@ -34,9 +32,6 @@ export default async function handler(event) {
 function cors() {
   return { "Access-Control-Allow-Origin": "*" };
 }
-function native(code, body, headers) {
-  return { statusCode: code, headers, body: typeof body === "string" ? body : JSON.stringify(body) };
-}
 function json(code, obj) {
-  return native(code, obj, { ...cors(), "Content-Type": "application/json; charset=utf-8" });
+  return new Response(JSON.stringify(obj), { status: code, headers: { ...cors(), "Content-Type": "application/json; charset=utf-8" } });
 }

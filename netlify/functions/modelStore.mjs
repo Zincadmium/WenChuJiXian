@@ -9,7 +9,7 @@ import { getStore } from "@netlify/blobs";
 const STORE = () => getStore("tripo3d");
 
 export default async function handler(event) {
-  if (event.httpMethod === "OPTIONS") return native(200, "ok", cors());
+  if (event.httpMethod === "OPTIONS") return new Response("ok", { status: 200, headers: cors() });
   try {
     const input = event.body ? JSON.parse(event.body) : {};
     const op = input.op || "get";
@@ -48,9 +48,6 @@ function cors() {
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   };
 }
-function native(code, body, headers) {
-  return { statusCode: code, headers, body: typeof body === "string" ? body : JSON.stringify(body) };
-}
 function json(code, obj) {
-  return native(code, obj, { ...cors(), "Content-Type": "application/json; charset=utf-8" });
+  return new Response(JSON.stringify(obj), { status: code, headers: { ...cors(), "Content-Type": "application/json; charset=utf-8" } });
 }
