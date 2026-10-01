@@ -262,7 +262,7 @@ async function step2(){
   const sys='你是文物AI生成提示词专家。根据用户中文需求与配方写一段高质量中文文生图提示词（供2D与3D生成）。要求：突出载体器型材质、表面纹样名称及寓意、写实质感、均匀灯光、博物馆展品照片感、构图完整。具备抽象理解力：若需求宽泛（如"动物纹样""山水纹样"），从该类各种具体纹样（龙凤鹤鹿鱼、草木云山等）中联想并自然采用适当的一种或几种，不硬性平铺所有母题。只输出提示词本身。';
   try{
     const body1=[{role:'system',content:sys},{role:'user',content:'配方：'+JSON.stringify(code)+'\n用户需求：'+userReq}];
-  const r=await fetch(CFG.qwen.proxy,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'qwen',model:CFG.qwen.model,payload:body1})});
+  const r=await fetch(CFG.qwen.proxy,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'qwen',model:CFG.qwen.model,messages:body1})});
     const j=await r.json();
     const content=(j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content)||(j.output&&j.output.text)||JSON.stringify(j);
     S.refined=String(content).trim();
@@ -412,7 +412,7 @@ async function askQA(){
   const ctx='配方：'+JSON.stringify(S.recipe||{})+' 精化提示词：'+(S.refined||'')+(S.imageUrl?'\n已生成2D写实文物图。':'')+(S.modelSaved?'\n已生成3D写实模型并存入库。':'');
   const box=document.createElement('div'); box.className='qa-item'; box.innerHTML='<b>Q：</b>'+(q).replace(/</g,'&lt;')+'<br><i>（思考中…）</i>'; $('qaArea').appendChild(box);
   try{
-    const r=await fetch(CFG.qwen.proxy,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'qwen',model:CFG.qwen.model,payload:[{role:'system',content:sys},{role:'user',content:ctx+'\n问题：'+q}]})});
+    const r=await fetch(CFG.qwen.proxy,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'qwen',model:CFG.qwen.model,messages:[{role:'system',content:sys},{role:'user',content:ctx+'\n问题：'+q}]})});
     const j=await r.json();
     const a=(j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content)||(j.output&&j.output.text)||JSON.stringify(j);
     box.innerHTML='<b>Q：</b>'+(q).replace(/</g,'&lt;')+'<br><b>A：</b>'+String(a).replace(/\n/g,'<br>');
@@ -446,7 +446,7 @@ async function step1AIExplain(txt){
     '5) 若库中有对应纹样，提示词末尾注明「参考文物纹样：<纹样名>」\n' +
     '只输出提示词本身，不要解释、不要前缀、不要引号。';
     const payload = [{role:'system',content:sys},{role:'user',content:'用户需求：'+txt+'\n配方：'+JSON.stringify(code)+'\n精化提示词：'+(S.refined||'（生成中…）')}];
-    const r = await fetch(CFG.qwen.proxy,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'qwen',model:CFG.qwen.model,payload:payload})});
+    const r = await fetch(CFG.qwen.proxy,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'qwen',model:CFG.qwen.model,messages:payload})});
     const j = await r.json();
     const a = (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || (j.output && j.output.text) || ('已生成配方：' + JSON.stringify(code));
     box.style.display = 'block';

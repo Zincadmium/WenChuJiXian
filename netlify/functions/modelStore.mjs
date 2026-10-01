@@ -21,7 +21,7 @@ export default async function handler(event) {
     }
     if (op === "list") {
       const items = [];
-      for await (const entry of store.list({ prefix: ".meta" })) {
+      for await (const entry of store.list()) {
         if (!entry.key.endsWith(".meta")) continue;
         const m = await store.getJSON(entry.key).catch(() => null);
         const base = entry.key.replace(/\.meta$/, "");
